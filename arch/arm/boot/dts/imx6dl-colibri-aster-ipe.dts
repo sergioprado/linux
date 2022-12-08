@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Copyright 2022 Embedded Labworks
+ */
+
+/dts-v1/;
+
+#include "nxp/imx/imx6dl-colibri-aster.dts"
+#include "ipe-cape.dtsi"
+
+/ {
+	model = "Toradex Colibri iMX6DL/S on Colibri Aster Board (with Ipe Board)";
+};

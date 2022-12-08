@@ -1,0 +1,203 @@
+/*
+ * Copyright 2019 Embedded Labworks
+ * Copyright 2014-2016 Toradex AG
+ * Copyright 2012 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ *
+ * This file is dual-licensed: you can use it either under the terms
+ * of the GPL or the X11 license, at your option. Note that this dual
+ * licensing only applies to this file, and not this project as a
+ * whole.
+ *
+ *  a) This file is free software; you can redistribute it and/or
+ *     modify it under the terms of the GNU General Public License
+ *     version 2 as published by the Free Software Foundation.
+ *
+ *     This file is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ * Or, alternatively,
+ *
+ *  b) Permission is hereby granted, free of charge, to any person
+ *     obtaining a copy of this software and associated documentation
+ *     files (the "Software"), to deal in the Software without
+ *     restriction, including without limitation the rights to use,
+ *     copy, modify, merge, publish, distribute, sublicense, and/or
+ *     sell copies of the Software, and to permit persons to whom the
+ *     Software is furnished to do so, subject to the following
+ *     conditions:
+ *
+ *     The above copyright notice and this permission notice shall be
+ *     included in all copies or substantial portions of the Software.
+ *
+ *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *     OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#include <dt-bindings/input/input.h>
+
+/ {
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_leds>;
+
+		led1 {
+			label = "ipe:red:ld1";
+			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+		};
+
+		led2 {
+			label = "ipe:blue:ld2";
+			gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_cape_keys>;
+
+		key1 {
+			label = "SW1";
+			gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
+			linux,code = <KEY_POWER>;
+			debounce-interval = <20>;
+		};
+
+		key2 {
+			label = "Push Button";
+			gpios = <&gpio1 7 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_ENTER>;
+			debounce-interval = <20>;
+		};
+	};
+};
+
+&ecspi4 {
+	status = "okay";
+
+	gpiom1: gpio@0 {
+		compatible = "microchip,mcp23s08";
+		gpio-controller;
+		#gpio-cells = <2>;
+		microchip,spi-present-mask = <0x01>;
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+	};
+};
+
+&i2c2 {
+	status = "okay";
+
+	/* STMPE811 touch screen controller */
+	stmpe811@41 {
+		compatible = "st,stmpe811";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_stmpe_int>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x41>;
+		interrupts = <20 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-parent = <&gpio6>;
+		interrupt-controller;
+		id = <0>;
+		blocks = <0x5>;
+		irq-trigger = <0x1>;
+
+		/* disabled because sometimes the device is not identified in the I2C bus */
+		status = "disabled";
+
+		stmpe_adc {
+			compatible = "st,stmpe-adc";
+			/* 3.25 MHz ADC clock speed */
+			st,adc-freq = <1>;
+			/* 12-bit ADC */
+			st,mod-12b = <1>;
+			/* internal ADC reference */
+			st,ref-sel = <0>;
+			/* ADC converstion time: 80 clocks */
+			st,sample-time = <4>;
+		};
+	};
+};
+
+&i2c3 {
+	status = "okay";
+
+	mpu9250@68 {
+		compatible = "invensense,mpu9250";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_accel>;
+		reg = <0x68>;
+		interrupt-parent = <&gpio2>;
+		interrupts = <22 IRQ_TYPE_EDGE_RISING>;
+	};
+
+	si7006@40 {
+		compatible = "silabs,si7020";
+		reg = <0x40>;
+	};
+};
+
+/* PWM1 pins conflict with leds pins */
+&pwm1 {
+	status = "disabled";
+};
+
+/* PWM3 pins conflict with gpio-keys pins */
+&pwm3 {
+	status = "disabled";
+};
+
+&iomuxc {
+	pinctrl-0 = <
+		&pinctrl_csi_gpio_1
+		&pinctrl_gpio_aster
+		&pinctrl_usbh_oc_1
+		&pinctrl_usbc_id_1
+		&pinctrl_weim_gpio_5
+	>;
+	pinctrl_gpio_leds: gpioledsgrp {
+		fsl,pins = <
+			MX6QDL_PAD_NANDF_D3__GPIO2_IO03 0x1b0b1  /* SODIMM 133 */
+			MX6QDL_PAD_GPIO_9__GPIO1_IO09   0x1b0b1  /* SODIMM 28 */
+		>;
+	};
+	pinctrl_gpio_cape_keys: gpiocapekeysgrp {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_A22__GPIO2_IO16  0x1b0b0  /* SODIMM 59_1 */
+			MX6QDL_PAD_SD4_DAT1__GPIO2_IO09 0x1b0b0  /* SODIMM 59_2 */
+			MX6QDL_PAD_GPIO_7__GPIO1_IO07   0x1b0b0  /* SODIMM 55 */
+		>;
+	};
+	pinctrl_stmpe_int: stmpeintgrp {
+		fsl,pins = <
+			MX6QDL_PAD_RGMII_TD0__GPIO6_IO20	0x1b0b0	/* STMPE811 interrupt */
+		>;
+	};
+	pinctrl_gpio_accel: gpioaccelgrp {
+		fsl,pins = <
+			MX6QDL_PAD_EIM_A16__GPIO2_IO22	0x1b0b0  /* MPU_INT - SODIMM 45 */
+		>;
+	};
+	pinctrl_gpio_aster: gpioaster {
+		fsl,pins = <
+			MX6QDL_PAD_KEY_COL2__GPIO4_IO10		0x1b0b0
+			MX6QDL_PAD_KEY_ROW2__GPIO4_IO11		0x1b0b0
+			MX6QDL_PAD_KEY_ROW4__GPIO4_IO15		0x1b0b0
+			MX6QDL_PAD_NANDF_D1__GPIO2_IO01		0x1b0b0
+			MX6QDL_PAD_NANDF_D6__GPIO2_IO06		0x1b0b0
+			MX6QDL_PAD_SD4_DAT0__GPIO2_IO08		0x1b0b0
+			MX6QDL_PAD_SD4_DAT3__GPIO2_IO11		0x1b0b0
+		>;
+	};
+};
