@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Copyright 2024 Embedded Labworks
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/input/linux-event-codes.h>
+
+/ {
+	leds-exp {
+		compatible = "gpio-leds";
+
+		led-0 {
+			color = <LED_COLOR_ID_GREEN>;
+			function = "exp";
+			gpios = <&gpio3 4 GPIO_ACTIVE_HIGH>;
+		};
+
+		led-1 {
+			color = <LED_COLOR_ID_RED>;
+			function = "exp";
+			gpios = <&gpio5 26 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	gpio-keys-exp {
+		compatible = "gpio-keys";
+
+		key-switch {
+			label = "Expansion board switch";
+			linux,code = <KEY_POWER>;
+			gpios = <&gpio5 27 GPIO_ACTIVE_HIGH>;
+			debounce-interval = <20>;
+		};
+
+		key-button {
+			label = "Expansion board push button";
+			linux,code = <KEY_ENTER>;
+			gpios = <&gpio5 5 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+			wakeup-source;
+		};
+	};
+};
+
+&i2c4 {
+	/* PCAL6408 (GPIO expander connected to 7 segment display */
+	gpio@20 {
+		compatible = "nxp,pcal6408";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		gpio-line-names = "7seg-e",  "7seg-d", "7seg-c",
+						  "7seg-dp", "7seg-b", "7seg-a",
+						  "7seg-f",  "7seg-g";
+	};
+
+	/* LSM6DSM (IMU - accelerometer and gyroscope) */
+	imu@6a {
+		compatible = "st,lsm6dsm";
+		pinctrl-0 = <&pinctrl_exp_imu>;
+		pinctrl-names = "default";
+		reg = <0x6a>;
+		interrupt-parent = <&gpio4>;
+		interrupts = <23 IRQ_TYPE_EDGE_RISING>;
+	};
+
+	/* SHT40 (humidity and temperature sensor) */
+	sht4x@44 {
+		compatible = "sensirion,sht4x";
+		reg = <0x44>;
+	};
+};
+
+&ecspi2 {
+	/* Infinion TPM SLM9670 */
+	tpm@0 {
+		compatible = "infineon,slb9670", "tcg,tpm_tis-spi";
+		spi-max-frequency = <32000000>;
+		reg = <0>;
+	};
+};
+
+&iomuxc {
+	pinctrl_exp_imu: expimusgrp {
+		fsl,pins =
+			<MX8MM_IOMUXC_SAI2_RXD0_GPIO4_IO23 0x106>;
+	};
+};
